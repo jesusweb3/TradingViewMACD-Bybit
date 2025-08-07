@@ -37,7 +37,7 @@ def get_client_ip(request: Request) -> str:
 async def lifespan(_app: FastAPI):
     logger.info("Сервер успешно запущен")
     server_ip = get_server_ip()
-    logger.info(f"Ваш хук для TradingView: http://{server_ip}:8080/ethusdt45m")
+    logger.info(f"Ваш хук для TradingView: http://{server_ip}:8080/webhook")
     yield
 
 
@@ -54,7 +54,7 @@ ALLOWED_IPS = {
 DEVELOPMENT_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
 
 
-@app.post("/ethusdt45m")
+@app.post("/webhook")
 async def webhook_handler(request: Request):
     try:
         client_ip = get_client_ip(request)
