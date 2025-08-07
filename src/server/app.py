@@ -21,6 +21,18 @@ def get_server_ip():
         raise RuntimeError("Ошибка получения внешнего IP сервера")
 
 
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+
+    return request.client.host
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     logger.info("Сервер успешно запущен")
@@ -38,12 +50,16 @@ ALLOWED_IPS = {
     "52.32.178.7"
 }
 
+DEVELOPMENT_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
+
 
 @app.post("/ethusdt45m")
 async def webhook_handler(request: Request):
-    client_ip = request.client.host
+    client_ip = get_client_ip(request)
+    logger.info(f"Запрос от IP: {client_ip}")
 
-    if client_ip not in ALLOWED_IPS:
+    if not DEVELOPMENT_MODE and client_ip not in ALLOWED_IPS:
+        logger.warning(f"Заблокирован запрос от {client_ip}")
         raise HTTPException(status_code=403, detail="Forbidden")
 
     data = await request.json()
