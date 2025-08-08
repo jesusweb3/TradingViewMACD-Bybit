@@ -2,10 +2,23 @@
 from fastapi import FastAPI, Request, HTTPException
 import uvicorn
 import os
+import requests
 from contextlib import asynccontextmanager
 from src.logger.config import setup_logger
 
 logger = setup_logger(__name__)
+
+
+def get_server_ip():
+    if external_ip := os.getenv("SERVER_IP"):
+        return external_ip
+
+    try:
+        response = requests.get('https://ipinfo.io/ip', timeout=5)
+        return response.text.strip()
+    except requests.RequestException as e:
+        logger.error(f"Не удалось получить внешний IP: {e}")
+        raise RuntimeError("Ошибка получения внешнего IP сервера")
 
 
 def get_client_ip(request: Request) -> str:
@@ -23,7 +36,8 @@ def get_client_ip(request: Request) -> str:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     logger.info("Сервер успешно запущен")
-    logger.info(f"Ваш хук для TradingView: http://pboard.space/webhook")
+    server_ip = get_server_ip()
+    logger.info(f"Ваш хук для TradingView: http://{server_ip}/webhook")
     yield
 
 
