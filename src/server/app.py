@@ -1,5 +1,6 @@
 # src/server/app.py
 import os
+import time
 from fastapi import FastAPI, Request, HTTPException
 import uvicorn
 import requests
@@ -8,12 +9,17 @@ from dotenv import load_dotenv
 from src.logger.config import setup_logger
 from src.parser import SignalParser, SignalParserError
 from src.trading import TradingStrategy
+from .watchdog import ServerWatchdog
 
+# Загружаем переменные из .env файла
 load_dotenv()
 
 logger = setup_logger(__name__)
 
+# Глобальные переменные
 trading_strategy: TradingStrategy | None = None
+watchdog: ServerWatchdog | None = None
+
 
 def get_server_ip():
     if external_ip := os.getenv("SERVER_IP"):
@@ -41,7 +47,7 @@ def get_client_ip(request: Request) -> str:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global trading_strategy
+    global trading_strategy, watchdog
 
     logger.info("Сервер успешно запущен")
     server_ip = get_server_ip()
@@ -55,7 +61,20 @@ async def lifespan(_app: FastAPI):
         logger.error(f"Ошибка инициализации торговой стратегии: {e}")
         raise RuntimeError(f"Не удалось инициализировать торговую стратегию: {e}")
 
+    # Запуск watchdog
+    try:
+        watchdog = ServerWatchdog(check_interval=300, max_connections=50)
+        import asyncio
+        asyncio.create_task(watchdog.start())
+        logger.info("Watchdog запущен")
+    except Exception as e:
+        logger.error(f"Ошибка запуска watchdog: {e}")
+
     yield
+
+    # Остановка watchdog при завершении
+    if watchdog:
+        watchdog.stop()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -105,6 +124,17 @@ async def webhook_handler(request: Request):
     except Exception as e:
         logger.error(f"Ошибка в webhook_handler: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/health")
+async def health_check():
+    """Health check эндпоинт для watchdog"""
+    return {
+        "status": "ok",
+        "timestamp": time.time(),
+        "trading_active": trading_strategy is not None,
+        "watchdog_active": watchdog is not None and watchdog.is_running
+    }
 
 
 def start_server():
