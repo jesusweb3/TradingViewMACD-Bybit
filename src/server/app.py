@@ -1,13 +1,19 @@
 # src/server/app.py
+import os
 from fastapi import FastAPI, Request, HTTPException
 import uvicorn
-import os
 import requests
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 from src.logger.config import setup_logger
+from src.parser import SignalParser, SignalParserError
+from src.trading import TradingStrategy
+
+load_dotenv()
 
 logger = setup_logger(__name__)
 
+trading_strategy: TradingStrategy | None = None
 
 def get_server_ip():
     if external_ip := os.getenv("SERVER_IP"):
@@ -35,9 +41,20 @@ def get_client_ip(request: Request) -> str:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    global trading_strategy
+
     logger.info("Сервер успешно запущен")
     server_ip = get_server_ip()
     logger.info(f"Ваш хук для TradingView: http://{server_ip}/webhook")
+
+    # Инициализация торговой стратегии
+    try:
+        trading_strategy = TradingStrategy()
+        logger.info("Торговая стратегия инициализирована")
+    except Exception as e:
+        logger.error(f"Ошибка инициализации торговой стратегии: {e}")
+        raise RuntimeError(f"Не удалось инициализировать торговую стратегию: {e}")
+
     yield
 
 
@@ -64,7 +81,27 @@ async def webhook_handler(request: Request):
 
         data = await request.json()
         logger.info(f"Получен вебхук от {client_ip}: {data}")
-        return {"status": "ok"}
+
+        # Парсинг сигнала
+        trading_signal = SignalParser.parse(data)
+
+        # Обработка сигнала торговой стратегией
+        if trading_strategy is None:
+            logger.error("Торговая стратегия не инициализирована")
+            raise HTTPException(status_code=500, detail="Trading strategy not initialized")
+
+        success = trading_strategy.process_signal(trading_signal)
+
+        if success:
+            logger.info(f"Сигнал {trading_signal} успешно обработан")
+            return {"status": "ok", "signal": str(trading_signal), "processed": True}
+        else:
+            logger.warning(f"Сигнал {trading_signal} не был обработан")
+            return {"status": "ok", "signal": str(trading_signal), "processed": False}
+
+    except SignalParserError as e:
+        logger.error(f"Ошибка парсинга: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Ошибка в webhook_handler: {e}")
         raise HTTPException(status_code=500, detail=str(e))
