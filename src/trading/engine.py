@@ -1,6 +1,5 @@
 # src/trading/engine.py
 from pybit.unified_trading import HTTP
-import time
 from typing import Optional, Dict, Any
 from .config import TradingConfig
 from src.logger.config import setup_logger
@@ -47,7 +46,6 @@ class TradingEngine:
 
                 price_filter = instrument['priceFilter']
                 self.tick_size = float(price_filter['tickSize'])
-
                 self.logger.info(
                     f"Параметры {self.symbol}: QtyStep={self.qty_step}, MinQty={self.min_order_qty}, TickSize={self.tick_size}")
             else:
@@ -161,7 +159,7 @@ class TradingEngine:
         raw_quantity = total_value / price
         rounded_quantity = self._round_quantity(raw_quantity)
 
-        self.logger.info(f"Расчет количества: {total_value} USDT / {price} = {raw_quantity:.6f} -> {rounded_quantity}")
+        self.logger.info(f"Расчет: {total_value} USDT / {price} = {rounded_quantity} {self.symbol}")
         return rounded_quantity
 
     def close_position(self) -> bool:
@@ -183,7 +181,7 @@ class TradingEngine:
             )
 
             if response['retCode'] == 0:
-                self.logger.info(f"Позиция {position['side']} закрыта. PnL: {position['unrealized_pnl']}")
+                self.logger.info(f"Закрыта {position['side']} позиция, PnL: {position['unrealized_pnl']} USDT")
                 self.current_position = None
                 return True
             else:
@@ -195,11 +193,6 @@ class TradingEngine:
             return False
 
     def open_position(self, side: str) -> bool:
-        if not self.close_position():
-            return False
-
-        time.sleep(1)
-
         current_price = self.get_current_price()
         if current_price == 0:
             self.logger.error("Не удалось получить текущую цену")
@@ -226,8 +219,8 @@ class TradingEngine:
             )
 
             if response['retCode'] == 0:
-                self.logger.info(
-                    f"Открыта позиция {side} {self.symbol}: {self.config.position_size} USDT по цене {current_price}")
+                direction = "Long" if side == "Buy" else "Short"
+                self.logger.info(f"Открыта {direction} позиция: {self.config.position_size} USDT по {current_price}")
                 self.current_position = {
                     'side': side,
                     'size': quantity,

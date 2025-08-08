@@ -30,7 +30,6 @@ class SignalParser:
                 timeframe=timeframe
             )
 
-            logger.info(f"Парсинг успешен: {trading_signal}")
             return trading_signal
 
         except Exception as e:
