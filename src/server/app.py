@@ -59,6 +59,16 @@ async def lifespan(_app: FastAPI):
     try:
         exchange_manager = ExchangeManager()
         logger.info("Exchange Manager инициализирован")
+    except ValueError as e:
+        logger.error("="*60)
+        logger.error("ОШИБКА КОНФИГУРАЦИИ")
+        logger.error("="*60)
+        logger.error(str(e))
+        logger.error("Проверьте настройки в .env файле")
+        logger.error("Скрипт завершает работу")
+        logger.error("="*60)
+        import sys
+        sys.exit(1)
     except Exception as e:
         logger.error(f"Ошибка инициализации Exchange Manager: {e}")
         raise RuntimeError(f"Не удалось инициализировать Exchange Manager: {e}")
