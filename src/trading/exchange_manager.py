@@ -3,6 +3,7 @@ import os
 from enum import Enum
 from typing import Union
 from .bybit import BybitStrategy
+from .binance import BinanceStrategy
 from src.logger.config import setup_logger
 
 
@@ -33,12 +34,11 @@ class ExchangeManager:
             self.logger.info("Активная биржа: Binance")
             return ExchangeType.BINANCE
 
-    def get_trading_strategy(self, symbol: str = "ETHUSDT") -> Union[BybitStrategy]:
+    def get_trading_strategy(self, symbol: str = "ETHUSDT") -> Union[BybitStrategy, BinanceStrategy]:
         if self.active_exchange == ExchangeType.BYBIT:
             return BybitStrategy(symbol)
         elif self.active_exchange == ExchangeType.BINANCE:
-            # TODO: Добавить BinanceStrategy в будущем
-            raise NotImplementedError("Binance strategy ещё не реализована")
+            return BinanceStrategy(symbol)
         else:
             raise ValueError(f"Неизвестная биржа: {self.active_exchange}")
 

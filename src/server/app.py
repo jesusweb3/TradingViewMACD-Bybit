@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from src.logger.config import setup_logger
 from src.parser import SignalParser, SignalParserError
 from typing import Union
-from src.trading import ExchangeManager, BybitStrategy
+from src.trading import ExchangeManager, BybitStrategy, BinanceStrategy
 from .watchdog import ServerWatchdog
 
 # Загружаем переменные из .env файла
@@ -19,7 +19,7 @@ logger = setup_logger(__name__)
 
 # Глобальные переменные
 exchange_manager: ExchangeManager | None = None
-trading_strategy: Union[BybitStrategy, None] = None
+trading_strategy: Union[BybitStrategy, BinanceStrategy, None] = None
 watchdog: ServerWatchdog | None = None
 
 
