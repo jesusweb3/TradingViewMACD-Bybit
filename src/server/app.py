@@ -47,6 +47,32 @@ def get_client_ip(request: Request) -> str:
     return request.client.host
 
 
+def validate_configuration():
+    """Проверка конфигурации перед запуском сервера"""
+    try:
+        # Проверяем настройки бирж
+        bybit_enabled = os.getenv('BYBIT_ENABLED', 'false').lower() == 'true'
+        binance_enabled = os.getenv('BINANCE_ENABLED', 'false').lower() == 'true'
+
+        if bybit_enabled and binance_enabled:
+            raise ValueError("BYBIT_ENABLED и BINANCE_ENABLED не могут быть одновременно true")
+
+        if not bybit_enabled and not binance_enabled:
+            raise ValueError("Должна быть включена одна из бирж (BYBIT_ENABLED=true или BINANCE_ENABLED=true)")
+
+        logger.info("Конфигурация проверена успешно")
+
+    except Exception as e:
+        logger.error("=" * 60)
+        logger.error("ОШИБКА КОНФИГУРАЦИИ")
+        logger.error("=" * 60)
+        logger.error(str(e))
+        logger.error("Проверьте настройки в .env файле")
+        logger.error("=" * 60)
+        import sys
+        sys.exit(1)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     global exchange_manager, trading_strategy, watchdog
@@ -59,16 +85,6 @@ async def lifespan(_app: FastAPI):
     try:
         exchange_manager = ExchangeManager()
         logger.info("Exchange Manager инициализирован")
-    except ValueError as e:
-        logger.error("="*60)
-        logger.error("ОШИБКА КОНФИГУРАЦИИ")
-        logger.error("="*60)
-        logger.error(str(e))
-        logger.error("Проверьте настройки в .env файле")
-        logger.error("Скрипт завершает работу")
-        logger.error("="*60)
-        import sys
-        sys.exit(1)
     except Exception as e:
         logger.error(f"Ошибка инициализации Exchange Manager: {e}")
         raise RuntimeError(f"Не удалось инициализировать Exchange Manager: {e}")
@@ -160,6 +176,10 @@ async def health_check():
 
 def start_server():
     logger.info("Запуск сервера")
+
+    # Проверяем конфигурацию ДО запуска FastAPI
+    validate_configuration()
+
     uvicorn.run(
         app,
         host="0.0.0.0",
