@@ -23,10 +23,11 @@ class BinanceEngine:
             self.client.FUTURES_URL = 'https://testnet.binancefuture.com/fapi'
 
         self.current_position = None
+        self.qty_step = None
         self.qty_precision = None
         self.price_precision = None
         self.min_qty = None
-        self.min_notional = None
+        self.tick_size = None
 
         self._initialize()
 
@@ -47,17 +48,20 @@ class BinanceEngine:
             if not symbol_info:
                 raise RuntimeError(f"Символ {self.symbol} не найден")
 
-            self.qty_precision = symbol_info['quantityPrecision']
-            self.price_precision = symbol_info['pricePrecision']
+            # Получаем precision из основной информации о символе
+            self.qty_precision = symbol_info.get('quantityPrecision', 3)
+            self.price_precision = symbol_info.get('pricePrecision', 2)
 
+            # Проходим по фильтрам
             for filter_item in symbol_info['filters']:
                 if filter_item['filterType'] == 'LOT_SIZE':
+                    self.qty_step = float(filter_item['stepSize'])
                     self.min_qty = float(filter_item['minQty'])
-                elif filter_item['filterType'] == 'MIN_NOTIONAL':
-                    self.min_notional = float(filter_item['minNotional'])
+                elif filter_item['filterType'] == 'PRICE_FILTER':
+                    self.tick_size = float(filter_item['tickSize'])
 
             self.logger.info(
-                f"Параметры {self.symbol}: QtyPrecision={self.qty_precision}, MinQty={self.min_qty}, MinNotional={self.min_notional}")
+                f"Параметры {self.symbol}: QtyStep={self.qty_step}, MinQty={self.min_qty}, TickSize={self.tick_size}")
 
         except Exception as e:
             self.logger.error(f"Ошибка получения информации о символе: {e}")
