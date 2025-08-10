@@ -8,7 +8,8 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from src.logger.config import setup_logger
 from src.parser import SignalParser, SignalParserError
-from src.trading import TradingStrategy
+from typing import Union
+from src.trading import ExchangeManager, BybitStrategy
 from .watchdog import ServerWatchdog
 
 # Загружаем переменные из .env файла
@@ -17,7 +18,8 @@ load_dotenv()
 logger = setup_logger(__name__)
 
 # Глобальные переменные
-trading_strategy: TradingStrategy | None = None
+exchange_manager: ExchangeManager | None = None
+trading_strategy: Union[BybitStrategy, None] = None
 watchdog: ServerWatchdog | None = None
 
 
@@ -47,15 +49,23 @@ def get_client_ip(request: Request) -> str:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    global trading_strategy, watchdog
+    global exchange_manager, trading_strategy, watchdog
 
     logger.info("Сервер успешно запущен")
     server_ip = get_server_ip()
     logger.info(f"Ваш хук для TradingView: http://{server_ip}/webhook")
 
+    # Инициализация менеджера бирж
+    try:
+        exchange_manager = ExchangeManager()
+        logger.info("Exchange Manager инициализирован")
+    except Exception as e:
+        logger.error(f"Ошибка инициализации Exchange Manager: {e}")
+        raise RuntimeError(f"Не удалось инициализировать Exchange Manager: {e}")
+
     # Инициализация торговой стратегии
     try:
-        trading_strategy = TradingStrategy()
+        trading_strategy = exchange_manager.get_trading_strategy()
         logger.info("Торговая стратегия инициализирована")
     except Exception as e:
         logger.error(f"Ошибка инициализации торговой стратегии: {e}")
@@ -133,7 +143,8 @@ async def health_check():
         "status": "ok",
         "timestamp": time.time(),
         "trading_active": trading_strategy is not None,
-        "watchdog_active": watchdog is not None and watchdog.is_running
+        "watchdog_active": watchdog is not None and watchdog.is_running,
+        "active_exchange": exchange_manager.active_exchange.value if exchange_manager else None
     }
 
 

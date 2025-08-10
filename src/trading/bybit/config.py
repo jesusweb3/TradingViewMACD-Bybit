@@ -1,9 +1,9 @@
-# src/trading/config.py
+# src/trading/bybit/config.py
 import os
 from dataclasses import dataclass
 
 @dataclass
-class TradingConfig:
+class BybitConfig:
     api_key: str
     secret: str
     testnet: bool
@@ -11,7 +11,7 @@ class TradingConfig:
     leverage: int
 
     @classmethod
-    def from_env(cls) -> 'TradingConfig':
+    def from_env(cls) -> 'BybitConfig':
         api_key = os.getenv('BYBIT_API_KEY')
         secret = os.getenv('BYBIT_SECRET')
 

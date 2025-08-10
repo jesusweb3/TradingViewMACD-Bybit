@@ -1,12 +1,12 @@
-# src/trading/engine.py
+# src/trading/bybit/engine.py
 from pybit.unified_trading import HTTP
 from typing import Optional, Dict, Any
-from .config import TradingConfig
+from .config import BybitConfig
 from src.logger.config import setup_logger
 
 
-class TradingEngine:
-    def __init__(self, config: TradingConfig, symbol: str):
+class BybitEngine:
+    def __init__(self, config: BybitConfig, symbol: str):
         self.config = config
         self.symbol = symbol
         self.logger = setup_logger(__name__)

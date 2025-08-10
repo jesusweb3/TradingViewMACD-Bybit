@@ -1,18 +1,18 @@
-# src/trading/strategy.py
+# src/trading/bybit/strategy.py
 import time
-from .engine import TradingEngine
-from .config import TradingConfig
-from .signal_filter import SignalFilter
+from .engine import BybitEngine
+from .config import BybitConfig
+from ..signal_filter import SignalFilter
 from src.parser.models import TradingSignal, SignalType
 from src.logger.config import setup_logger
 
 
-class TradingStrategy:
+class BybitStrategy:
     def __init__(self, symbol: str = "ETHUSDT"):
         self.logger = setup_logger(__name__)
-        self.config = TradingConfig.from_env()
+        self.config = BybitConfig.from_env()
         self.signal_filter = SignalFilter()
-        self.engine = TradingEngine(self.config, symbol)
+        self.engine = BybitEngine(self.config, symbol)
 
     def process_signal(self, signal: TradingSignal) -> bool:
         try:
