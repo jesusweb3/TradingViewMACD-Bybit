@@ -60,6 +60,15 @@ def validate_configuration():
         if not bybit_enabled and not binance_enabled:
             raise ValueError("Должна быть включена одна из бирж (BYBIT_ENABLED=true или BINANCE_ENABLED=true)")
 
+        # Проверяем торговые символы
+        if bybit_enabled:
+            symbol = os.getenv('BYBIT_SYMBOL', 'ETHUSDT')
+            logger.info(f"ByBit торговый символ: {symbol}")
+
+        if binance_enabled:
+            symbol = os.getenv('BINANCE_SYMBOL', 'ETHUSDC')
+            logger.info(f"Binance торговый символ: {symbol}")
+
         logger.info("Конфигурация проверена успешно")
 
     except Exception as e:

@@ -34,7 +34,16 @@ class ExchangeManager:
             self.logger.info("Активная биржа: Binance")
             return ExchangeType.BINANCE
 
-    def get_trading_strategy(self, symbol: str = "ETHUSDT") -> Union[BybitStrategy, BinanceStrategy]:
+    def get_trading_strategy(self, symbol: str = None) -> Union[BybitStrategy, BinanceStrategy]:
+        if symbol is None:
+            # Читаем символ из переменных окружения
+            if self.active_exchange == ExchangeType.BYBIT:
+                symbol = os.getenv('BYBIT_SYMBOL', 'ETHUSDT')
+            else:
+                symbol = os.getenv('BINANCE_SYMBOL', 'ETHUSDC')
+
+        self.logger.info(f"Инициализация торговой стратегии для {symbol}")
+
         if self.active_exchange == ExchangeType.BYBIT:
             return BybitStrategy(symbol)
         elif self.active_exchange == ExchangeType.BINANCE:
